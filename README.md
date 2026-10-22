@@ -1,4 +1,4 @@
-# Steam Fictícia: servidor MCP (FastMCP) de jogos, gêneros, plataformas e preços
+# Steam Fictícia: servidor MCP (FastMCP) de jogos, gêneros, plataformas e preços(REPO DE APRENDIZADO)
 
 Um servidor MCP que consulta uma loja de jogos fictícia. Os dados (30 jogos, capas, histórico
 de preços e promoções) ficam no **Supabase**. O servidor fica publicado na **Vercel**, para
