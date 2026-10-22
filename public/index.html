@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steam Fictícia</title>
+<style>
+  :root {
+    --bg: #171a21; --painel: #1b2838; --card: #213246; --borda: #2a475e;
+    --texto: #c7d5e0; --fraco: #8f98a0; --destaque: #66c0f4; --verde: #a4d007; --verde-bg: #4c6b22; --erro: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, "Segoe UI", sans-serif; background: var(--bg); color: var(--texto); }
+  header { background: var(--painel); padding: 14px 24px; border-bottom: 1px solid var(--borda);
+           display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 22px; color: #fff; letter-spacing: .5px; }
+  header p { margin: 2px 0 0; color: var(--fraco); font-size: 13px; }
+  .mcp-url { display: flex; gap: 6px; align-items: center; font-size: 13px; min-width: 0; }
+  .mcp-url code { background: var(--bg); border: 1px solid var(--borda); padding: 6px 8px; border-radius: 4px; overflow-x: auto; white-space: nowrap; max-width: 60vw; }
+  main { max-width: 1240px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 320px; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+  section { background: var(--painel); border: 1px solid var(--borda); border-radius: 6px; padding: 16px; min-width: 0; }
+  h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--destaque); }
+  .filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
+  input, select, button { font: inherit; color: var(--texto); background: var(--bg); border: 1px solid var(--borda); border-radius: 4px; padding: 8px 10px; }
+  .filtros input, .filtros select { flex: 1 1 140px; min-width: 0; }
+  label.check { display: flex; gap: 6px; align-items: center; font-size: 14px; white-space: nowrap; }
+  button { cursor: pointer; background: linear-gradient(90deg, #47bfff, #1a44c2); border: 0; color: #fff; font-weight: 600; }
+  button:hover { filter: brightness(1.15); }
+  button.secundario { background: var(--card); border: 1px solid var(--borda); }
+  .status { font-size: 13px; color: var(--fraco); margin-bottom: 8px; min-height: 18px; }
+  .status.erro { color: var(--erro); }
+  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border-radius: 4px; overflow: hidden; cursor: pointer; border: 1px solid transparent; transition: border-color .15s, transform .15s; display: flex; flex-direction: column; }
+  .card:hover { border-color: var(--destaque); transform: translateY(-2px); }
+  .card img { width: 100%; aspect-ratio: 460 / 215; object-fit: cover; display: block; background: var(--bg); }
+  .card .corpo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card h3 { margin: 0; font-size: 15px; color: #fff; }
+  .meta { font-size: 12px; color: var(--fraco); }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 11px; background: rgba(103,193,245,.15); color: var(--destaque); padding: 2px 6px; border-radius: 3px; }
+  .tag.plat { background: rgba(255,255,255,.06); color: var(--fraco); }
+  .linha { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 4px; }
+  .preco { display: flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: 14px; }
+  .preco .desc { background: var(--verde-bg); color: var(--verde); font-weight: 800; padding: 4px 6px; display: flex; align-items: center; }
+  .preco .valores { background: rgba(0,0,0,.25); padding: 2px 8px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+  .preco s { font-size: 11px; color: var(--fraco); }
+  .preco b { color: #fff; }
+  .preco.normal .valores { background: var(--verde-bg); }
+  .preco.normal b { color: var(--verde); }
+  pre { background: var(--bg); border: 1px solid var(--borda); border-radius: 4px; padding: 10px; overflow: auto; max-height: 340px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 8px 0 0; }
+  .lateral { display: grid; gap: 16px; align-content: start; min-width: 0; }
+  .lateral p { margin: 0; line-height: 1.5; font-size: 14px; white-space: pre-line; }
+  .campo { display: grid; gap: 4px; margin-bottom: 8px; font-size: 13px; }
+  .campo input { width: 100%; }
+  .descricao { font-size: 13px; color: var(--fraco); margin: 6px 0 10px; }
+  .full { grid-column: 1 / -1; }
+  dialog { background: var(--painel); color: var(--texto); border: 1px solid var(--borda); border-radius: 6px; padding: 0; max-width: 720px; width: calc(100% - 32px); }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  dialog img { width: 100%; display: block; aspect-ratio: 460 / 215; object-fit: cover; }
+  .dialog-corpo { padding: 16px 20px 20px; }
+  .dialog-corpo h2 { font-size: 22px; text-transform: none; letter-spacing: 0; color: #fff; margin: 0 0 6px; }
+  .dialog-corpo > p { margin: 0 0 14px; line-height: 1.5; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; margin: 0 0 16px; }
+  dt { color: var(--fraco); }
+  dd { margin: 0; }
+  .grafico { background: var(--bg); border: 1px solid var(--borda); border-radius: 4px; padding: 8px; }
+  .grafico svg { width: 100%; height: auto; display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  td, th { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--borda); }
+  th { color: var(--fraco); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabela { max-height: 220px; overflow: auto; }
+  .fechar { display: flex; justify-content: flex-end; margin-top: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>STEAM FICTÍCIA</h1>
+    <p>Cada ação desta página chama uma tool do servidor MCP <code>steam</code>.</p>
+  </div>
+  <div class="mcp-url">
+    <span>Endpoint MCP:</span>
+    <code id="mcpUrl"></code>
+    <button class="secundario" id="btnCopiar">Copiar</button>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>Loja</h2>
+    <div class="filtros">
+      <input id="termo" placeholder="Buscar por título (buscar_jogos)">
+      <button id="btnBuscar">Buscar</button>
+    </div>
+    <div class="filtros">
+      <select id="genero"><option value="">Todos os gêneros</option></select>
+      <select id="plataforma"><option value="">Todas as plataformas</option></select>
+      <input id="precoMax" type="number" min="0" step="0.01" placeholder="Preço máx. (R$)">
+      <input id="anoMin" type="number" min="2000" max="2100" placeholder="Lançado a partir de (ano)">
+    </div>
+    <div class="filtros">
+      <select id="ordenar">
+        <option value="nota">Ordenar por nota</option>
+        <option value="preco">Menor preço</option>
+        <option value="lancamento">Mais recentes</option>
+        <option value="desconto">Maior desconto</option>
+        <option value="titulo">Título (A-Z)</option>
+      </select>
+      <label class="check"><input type="checkbox" id="soPromo"> Só promoções</label>
+      <button id="btnFiltrar">Filtrar (filtrar_jogos)</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="grade" class="grade"></div>
+  </section>
+
+  <div class="lateral">
+    <section>
+      <h2>Promoções (resource)</h2>
+      <p id="promocoes">Carregando…</p>
+    </section>
+    <section>
+      <h2>Prompt recomendar_jogo</h2>
+      <div class="campo">Gênero <input id="pGenero" value="RPG"></div>
+      <div class="campo">Plataforma <input id="pPlataforma" value="Steam Deck"></div>
+      <button class="secundario" id="btnPrompt">Gerar prompt</button>
+      <pre id="saidaPrompt" hidden></pre>
+    </section>
+  </div>
+
+  <section class="full">
+    <h2>Console MCP</h2>
+    <div class="filtros"><select id="tool"></select></div>
+    <div id="descricaoTool" class="descricao"></div>
+    <form id="formTool"></form>
+    <button id="btnChamar">Chamar tool</button>
+    <pre id="saidaTool">Escolha uma tool e clique em "Chamar tool".</pre>
+  </section>
+</main>
+
+<dialog id="detalhes">
+  <img id="dCapa" alt="">
+  <div class="dialog-corpo">
+    <h2 id="dTitulo"></h2>
+    <p id="dDescricao"></p>
+    <dl id="dLista"></dl>
+    <h3 class="meta">HISTÓRICO DE PREÇOS (historico_precos)</h3>
+    <div class="grafico" id="dGrafico"></div>
+    <div class="tabela"><table><thead><tr><th>Data</th><th>Evento</th><th class="num">Preço</th></tr></thead><tbody id="dTabela"></tbody></table></div>
+    <form method="dialog" class="fechar"><button>Fechar</button></form>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const brl = v => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const dataBR = iso => new Date(iso + "T00:00:00").toLocaleDateString("pt-BR");
+let TOOLS = [];
+
+async function chamar(nome, args = {}) {
+  const r = await fetch(`/api/tools/${nome}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(args),
+  });
+  const json = await r.json();
+  if (!r.ok) throw new Error(json.erro);
+  return json.resultado;
+}
+
+function status(texto, erro = false) {
+  $("status").textContent = texto;
+  $("status").className = "status" + (erro ? " erro" : "");
+}
+
+function el(tag, classe, texto) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+function caixaPreco(j) {
+  const caixa = el("div", "preco" + (j.desconto_pct ? "" : " normal"));
+  if (j.desconto_pct) caixa.append(el("span", "desc", `-${j.desconto_pct}%`));
+  const valores = el("div", "valores");
+  if (j.desconto_pct) valores.append(el("s", null, brl(j.preco_base)));
+  valores.append(el("b", null, brl(j.preco_atual)));
+  caixa.append(valores);
+  return caixa;
+}
+
+function renderJogos(jogos, origem) {
+  const grade = $("grade");
+  grade.replaceChildren();
+  status(`${jogos.length} jogo(s) · via ${origem}`);
+  for (const j of jogos) {
+    const card = el("div", "card");
+    const img = el("img");
+    img.src = j.capa_url || ""; img.alt = j.titulo; img.loading = "lazy";
+    const corpo = el("div", "corpo");
+    corpo.append(el("h3", null, j.titulo), el("div", "meta", `${j.desenvolvedora} · ${dataBR(j.data_lancamento)}`));
+    const tags = el("div", "tags");
+    j.generos.forEach(g => tags.append(el("span", "tag", g)));
+    j.plataformas.forEach(p => tags.append(el("span", "tag plat", p)));
+    const linha = el("div", "linha");
+    linha.append(el("span", "meta", `★ ${j.nota}`), caixaPreco(j));
+    corpo.append(tags, linha);
+    card.append(img, corpo);
+    card.onclick = () => abrirDetalhes(j.id);
+    grade.append(card);
+  }
+}
+
+async function executar(fn, origem) {
+  status("Consultando…");
+  try { renderJogos(await fn(), origem); }
+  catch (e) { $("grade").replaceChildren(); status(e.message, true); }
+}
+
+// Gráfico em degraus: o preço vale até a próxima mudança; a última vai até hoje.
+function graficoPrecos(historico, precoAtual) {
+  const NS = "http://www.w3.org/2000/svg";
+  const W = 660, H = 170, M = { t: 12, r: 12, b: 24, l: 56 };
+  const pontos = historico.map(h => ({ t: new Date(h.data + "T00:00:00").getTime(), p: Number(h.preco) }));
+  const hoje = Date.now();
+  const t0 = pontos[0].t, t1 = Math.max(hoje, pontos.at(-1).t + 1);
+  const pMax = Math.max(...pontos.map(p => p.p), precoAtual) * 1.1;
+  const x = t => M.l + (t - t0) / (t1 - t0) * (W - M.l - M.r);
+  const y = p => M.t + (1 - p / pMax) * (H - M.t - M.b);
+  let d = `M${x(pontos[0].t)},${y(pontos[0].p)}`;
+  for (let i = 1; i < pontos.length; i++) d += ` H${x(pontos[i].t)} V${y(pontos[i].p)}`;
+  d += ` H${x(t1)}`;
+
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const add = (tag, attrs, texto) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (texto) e.textContent = texto;
+    svg.append(e);
+  };
+  for (const frac of [0, 0.5, 1]) {
+    const p = pMax / 1.1 * frac;
+    add("line", { x1: M.l, x2: W - M.r, y1: y(p), y2: y(p), stroke: "#2a475e", "stroke-dasharray": "3 4" });
+    add("text", { x: M.l - 6, y: y(p) + 4, "text-anchor": "end", "font-size": 11, fill: "#8f98a0" }, brl(p));
+  }
+  const anos = new Set();
+  for (let a = new Date(t0).getFullYear() + 1; a <= new Date(t1).getFullYear(); a++) anos.add(a);
+  const passo = Math.ceil(anos.size / 8);
+  [...anos].filter((_, i) => i % passo === 0).forEach(a => {
+    const t = new Date(a, 0, 1).getTime();
+    add("text", { x: x(t), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: "#8f98a0" }, String(a));
+  });
+  add("path", { d, fill: "none", stroke: "#66c0f4", "stroke-width": 2 });
+  pontos.forEach(pt => add("circle", { cx: x(pt.t), cy: y(pt.p), r: 2.5, fill: "#66c0f4" }));
+  return svg;
+}
+
+async function abrirDetalhes(id) {
+  try {
+    const j = await chamar("detalhes_jogo", { jogo_id: id });
+    $("dCapa").src = j.capa_url || ""; $("dCapa").alt = j.titulo;
+    $("dTitulo").textContent = j.titulo;
+    $("dDescricao").textContent = j.descricao;
+    const promo = j.desconto_pct ? `${brl(j.preco_atual)} (-${j.desconto_pct}% · ${j.promocao} até ${dataBR(j.promocao_ate)})` : brl(j.preco_atual);
+    const campos = [
+      ["Lançamento", dataBR(j.data_lancamento)], ["Desenvolvedora", j.desenvolvedora], ["Publicadora", j.publicadora],
+      ["Gêneros", j.generos.join(", ")], ["Plataformas", j.plataformas.join(", ")],
+      ["Classificação", j.classificacao === "L" ? "Livre" : `${j.classificacao} anos`], ["Nota", `★ ${j.nota}`],
+      ["Preço atual", promo], ["Preço cheio", brl(j.preco_base)], ["Menor preço histórico", brl(j.menor_preco_historico)],
+    ];
+    $("dLista").replaceChildren(...campos.flatMap(([k, v]) => [el("dt", null, k), el("dd", null, String(v))]));
+    $("dGrafico").replaceChildren(graficoPrecos(j.historico_precos, j.preco_atual));
+    $("dTabela").replaceChildren(...[...j.historico_precos].reverse().map(h => {
+      const tr = el("tr");
+      tr.append(el("td", null, dataBR(h.data)), el("td", null, h.evento), el("td", "num", brl(h.preco)));
+      return tr;
+    }));
+    $("detalhes").showModal();
+  } catch (e) { status(e.message, true); }
+}
+
+// ---- Loja ----
+$("btnBuscar").onclick = () => executar(() => chamar("buscar_jogos", { termo: $("termo").value }), "buscar_jogos");
+$("termo").onkeydown = e => { if (e.key === "Enter") $("btnBuscar").click(); };
+
+$("btnFiltrar").onclick = () => {
+  const args = { ordenar_por: $("ordenar").value };
+  if ($("genero").value) args.genero = $("genero").value;
+  if ($("plataforma").value) args.plataforma = $("plataforma").value;
+  if ($("precoMax").value) args.preco_maximo = Number($("precoMax").value);
+  if ($("anoMin").value) args.ano_minimo = Number($("anoMin").value);
+  if ($("soPromo").checked) args.apenas_promocao = true;
+  executar(() => chamar("filtrar_jogos", args), "filtrar_jogos");
+};
+["genero", "plataforma", "ordenar", "soPromo"].forEach(id => $(id).onchange = () => $("btnFiltrar").click());
+
+// ---- Prompt ----
+$("btnPrompt").onclick = async () => {
+  const r = await fetch("/api/prompt/recomendar_jogo", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ genero: $("pGenero").value, plataforma: $("pPlataforma").value }),
+  });
+  const json = await r.json();
+  $("saidaPrompt").hidden = false;
+  $("saidaPrompt").textContent = json.mensagens.map(m => `[${m.papel}] ${m.texto}`).join("\n\n");
+};
+
+// ---- Console MCP ----
+function montarFormulario() {
+  const tool = TOOLS.find(t => t.nome === $("tool").value);
+  $("descricaoTool").textContent = tool.descricao || "";
+  const form = $("formTool");
+  form.replaceChildren();
+  const props = tool.schema.properties || {};
+  const obrigatorios = tool.schema.required || [];
+  for (const [nome, def] of Object.entries(props)) {
+    const tipos = def.anyOf ? def.anyOf.map(a => a.type) : [def.type];
+    const tipo = tipos.find(t => t && t !== "null") || "string";
+    const rotulo = `${nome} (${def.enum ? def.enum.join(" | ") : tipo})${obrigatorios.includes(nome) ? " *" : ""}`;
+    const campo = el("label", "campo", rotulo);
+    let input;
+    if (def.enum) {
+      input = el("select");
+      def.enum.forEach(v => input.append(new Option(v, v, false, v === def.default)));
+    } else if (tipo === "boolean") {
+      input = el("select");
+      input.append(new Option("", ""), new Option("true", "true"), new Option("false", "false"));
+    } else {
+      input = el("input");
+      if (tipo === "integer" || tipo === "number") { input.type = "number"; input.step = "any"; }
+    }
+    input.name = nome;
+    input.dataset.tipo = tipo;
+    campo.append(input);
+    form.append(campo);
+  }
+  if (!Object.keys(props).length) form.append(el("div", "descricao", "Esta tool não recebe argumentos."));
+}
+
+$("tool").onchange = montarFormulario;
+$("formTool").onsubmit = e => { e.preventDefault(); $("btnChamar").click(); };
+
+$("btnChamar").onclick = async () => {
+  const args = {};
+  for (const input of $("formTool").querySelectorAll("input, select")) {
+    if (input.value === "") continue;
+    const t = input.dataset.tipo;
+    args[input.name] = t === "integer" || t === "number" ? Number(input.value) : t === "boolean" ? input.value === "true" : input.value;
+  }
+  const nome = $("tool").value;
+  const cabecalho = `→ ${nome}(${JSON.stringify(args)})\n\n`;
+  $("saidaTool").textContent = cabecalho + "Aguardando…";
+  try {
+    $("saidaTool").textContent = cabecalho + JSON.stringify(await chamar(nome, args), null, 2);
+  } catch (err) {
+    $("saidaTool").textContent = cabecalho + "ERRO (o que o modelo veria):\n" + err.message;
+  }
+};
+
+// ---- Cabeçalho ----
+$("mcpUrl").textContent = `${location.origin}/mcp`;
+$("btnCopiar").onclick = async () => {
+  try { await navigator.clipboard.writeText($("mcpUrl").textContent); $("btnCopiar").textContent = "Copiado!"; }
+  catch { $("btnCopiar").textContent = "Copie manualmente"; }
+  setTimeout(() => $("btnCopiar").textContent = "Copiar", 1500);
+};
+
+// ---- Inicialização ----
+async function iniciar() {
+  try {
+    const [generos, plataformas, tools] = await Promise.all([
+      chamar("listar_generos"),
+      chamar("listar_plataformas"),
+      fetch("/api/tools").then(r => r.json()),
+    ]);
+    generos.forEach(g => $("genero").append(new Option(g, g)));
+    plataformas.forEach(p => $("plataforma").append(new Option(p, p)));
+    TOOLS = tools;
+    tools.forEach(t => $("tool").append(new Option(t.nome, t.nome)));
+    montarFormulario();
+    executar(() => chamar("filtrar_jogos"), "filtrar_jogos");
+  } catch (e) {
+    status("Falha ao falar com o servidor MCP: " + e.message, true);
+  }
+  fetch("/api/promocoes").then(r => r.json())
+    .then(p => $("promocoes").textContent = p.texto || p.erro)
+    .catch(e => $("promocoes").textContent = e.message);
+}
+iniciar();
+</script>
+</body>
+</html>

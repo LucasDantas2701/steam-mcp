@@ -1,109 +1,124 @@
-"""Servidor MCP da "Steam fictícia": consulta jogos, gêneros e plataformas.
+"""Servidor MCP da "Steam fictícia": consulta jogos, gêneros, plataformas e preços no Supabase.
 
-Rodar (stdio, padrão):  python servidor_steam.py
-Testar sem LLM:         fastmcp list servidor_steam.py
-                        fastmcp call servidor_steam.py jogos_por_genero genero=RPG
+Rodar local (stdio):  python servidor_steam.py
+Testar sem LLM:       fastmcp list servidor_steam.py
+                      fastmcp call servidor_steam.py jogos_por_genero genero=RPG
+Versão HTTP/Vercel:   app.py (expõe este mesmo servidor em /mcp)
 
+Precisa de SUPABASE_URL e SUPABASE_KEY (chave pública/anon) no ambiente ou no arquivo .env.
 ATENÇÃO: em stdio, nunca use print() aqui (stdout é o canal do protocolo).
 """
+import os
+from functools import cache
+from pathlib import Path
+from typing import Literal
+
+from dotenv import load_dotenv
 from fastmcp import FastMCP
+from supabase import Client, create_client
+
+load_dotenv(Path(__file__).parent / ".env")
 
 mcp = FastMCP("steam")
 
-GENEROS = ["RPG", "Ação", "Aventura", "Corrida", "Simulação", "Estratégia", "Terror", "Indie", "Puzzle"]
-PLATAFORMAS = ["Windows", "macOS", "Linux", "Steam Deck"]
-
-JOGOS: dict[int, dict] = {
-    1: {"titulo": "Cavaleiros de Aurora", "generos": ["RPG", "Aventura"],
-        "plataformas": ["Windows", "Linux", "Steam Deck"], "preco": 59.90, "nota": 9.1,
-        "ano": 2024, "desenvolvedora": "Estúdio Boreal"},
-    2: {"titulo": "Neon Drift 2077", "generos": ["Corrida", "Ação"],
-        "plataformas": ["Windows", "Steam Deck"], "preco": 79.90, "nota": 8.4,
-        "ano": 2025, "desenvolvedora": "Pixel Turbo"},
-    3: {"titulo": "Fazendinha do Vale", "generos": ["Simulação", "Indie"],
-        "plataformas": ["Windows", "macOS", "Linux", "Steam Deck"], "preco": 24.99, "nota": 9.4,
-        "ano": 2023, "desenvolvedora": "Coruja Games"},
-    4: {"titulo": "Ecos da Mansão Vazia", "generos": ["Terror", "Aventura"],
-        "plataformas": ["Windows"], "preco": 39.90, "nota": 7.8,
-        "ano": 2022, "desenvolvedora": "Sombra Interativa"},
-    5: {"titulo": "Impérios de Ferro", "generos": ["Estratégia"],
-        "plataformas": ["Windows", "macOS"], "preco": 99.90, "nota": 8.7,
-        "ano": 2025, "desenvolvedora": "Legião Studios"},
-    6: {"titulo": "Cubo Quântico", "generos": ["Puzzle", "Indie"],
-        "plataformas": ["Windows", "macOS", "Linux"], "preco": 14.90, "nota": 8.9,
-        "ano": 2021, "desenvolvedora": "Mente Leve"},
-    7: {"titulo": "Lendas do Abismo", "generos": ["RPG", "Ação"],
-        "plataformas": ["Windows", "Steam Deck"], "preco": 129.90, "nota": 9.0,
-        "ano": 2026, "desenvolvedora": "Forja Digital"},
-    8: {"titulo": "Pequeno Astronauta", "generos": ["Aventura", "Indie", "Puzzle"],
-        "plataformas": ["Windows", "macOS", "Linux", "Steam Deck"], "preco": 19.90, "nota": 8.2,
-        "ano": 2024, "desenvolvedora": "Órbita Zero"},
-    9: {"titulo": "Caminhoneiro Amazônico", "generos": ["Simulação", "Corrida"],
-        "plataformas": ["Windows", "Linux"], "preco": 49.90, "nota": 7.5,
-        "ano": 2023, "desenvolvedora": "BR-319 Games"},
-    10: {"titulo": "Torre dos Mil Andares", "generos": ["RPG", "Estratégia", "Indie"],
-         "plataformas": ["Windows", "Linux", "Steam Deck"], "preco": 34.90, "nota": 8.8,
-         "ano": 2022, "desenvolvedora": "Masmorra Indie"},
-    11: {"titulo": "Hospital Abandonado VR", "generos": ["Terror"],
-         "plataformas": ["Windows"], "preco": 29.90, "nota": 6.9,
-         "ano": 2021, "desenvolvedora": "Sombra Interativa"},
-    12: {"titulo": "Comandante Galáctico", "generos": ["Estratégia", "Simulação"],
-         "plataformas": ["Windows", "macOS", "Linux"], "preco": 69.90, "nota": 8.1,
-         "ano": 2026, "desenvolvedora": "Nebulosa Soft"},
+CAMPOS_RESUMO = (
+    "id, titulo, desenvolvedora, data_lancamento, generos, plataformas, "
+    "preco_base, preco_atual, desconto_pct, nota, capa_url"
+)
+ORDENACAO = {
+    "nota": ("nota", True),
+    "preco": ("preco_atual", False),
+    "lancamento": ("data_lancamento", True),
+    "titulo": ("titulo", False),
+    "desconto": ("desconto_pct", True),
 }
 
 
-def _com_id(jogo_id: int) -> dict:
-    return {"id": jogo_id, **JOGOS[jogo_id]}
+@cache
+def _db() -> Client:
+    url, chave = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
+    if not url or not chave:
+        raise RuntimeError("Servidor sem SUPABASE_URL/SUPABASE_KEY configurados (veja o .env.example).")
+    return create_client(url, chave)
 
 
-def _normalizar(valor: str, validos: list[str], tipo: str) -> str:
+def _nomes(tabela: str) -> list[str]:
+    return [r["nome"] for r in _db().table(tabela).select("nome").order("id").execute().data]
+
+
+def _normalizar(valor: str, tabela: str, tipo: str) -> str:
     """Devolve o nome oficial (ex.: 'rpg' -> 'RPG') ou levanta ValueError listando os válidos."""
+    validos = _nomes(tabela)
     for v in validos:
         if v.lower() == valor.lower().strip():
             return v
     raise ValueError(f"{tipo} '{valor}' não existe. Válidos: {', '.join(validos)}.")
 
 
+def _contem(coluna: str, valor: str) -> tuple[str, str, str]:
+    # Filtro "array contém" do PostgREST; aspas para nomes com espaço (ex.: "Steam Deck").
+    return coluna, "cs", '{"%s"}' % valor
+
+
 @mcp.tool
 def buscar_jogos(termo: str) -> list[dict]:
     """Busca jogos cujo título contém o termo (sem diferenciar maiúsculas/minúsculas)."""
-    termo = termo.lower().strip()
-    return [_com_id(i) for i, j in JOGOS.items() if termo in j["titulo"].lower()]
+    termo = termo.strip().replace("%", "")
+    return (
+        _db().table("jogos_completos").select(CAMPOS_RESUMO)
+        .ilike("titulo", f"%{termo}%").order("titulo").execute().data
+    )
 
 
 @mcp.tool
 def detalhes_jogo(jogo_id: int) -> dict:
-    """Retorna todos os dados de um jogo pelo id. Falha se o id não existir."""
-    if jogo_id not in JOGOS:
-        raise ValueError(f"Jogo {jogo_id} não existe. Ids válidos: 1 a {max(JOGOS)}.")
-    return _com_id(jogo_id)
+    """Retorna todos os dados de um jogo pelo id: descrição, lançamento, desenvolvedora, publicadora,
+    classificação, capa, preço atual, promoção vigente, menor preço histórico e histórico de preços."""
+    linhas = _db().table("jogos_completos").select("*").eq("id", jogo_id).limit(1).execute().data
+    if not linhas:
+        raise ValueError(f"Jogo {jogo_id} não existe. Use buscar_jogos ou filtrar_jogos para achar o id.")
+    jogo = linhas[0]
+    jogo["historico_precos"] = historico_precos(jogo_id)
+    return jogo
+
+
+@mcp.tool
+def historico_precos(jogo_id: int) -> list[dict]:
+    """Lista as mudanças de preço de um jogo em ordem cronológica (lançamento, promoções, reduções)."""
+    return (
+        _db().table("historico_precos").select("data, preco, evento")
+        .eq("jogo_id", jogo_id).order("data").execute().data
+    )
 
 
 @mcp.tool
 def listar_generos() -> list[str]:
     """Lista os gêneros de jogos disponíveis na loja."""
-    return GENEROS
+    return _nomes("generos")
 
 
 @mcp.tool
 def listar_plataformas() -> list[str]:
     """Lista as plataformas suportadas pela loja."""
-    return PLATAFORMAS
+    return _nomes("plataformas")
 
 
 @mcp.tool
 def jogos_por_genero(genero: str) -> list[dict]:
     """Lista os jogos de um gênero (ex.: RPG, Terror). Falha se o gênero não existir."""
-    genero = _normalizar(genero, GENEROS, "Gênero")
-    return [_com_id(i) for i, j in JOGOS.items() if genero in j["generos"]]
+    return filtrar_jogos(genero=genero)
 
 
 @mcp.tool
 def jogos_por_plataforma(plataforma: str) -> list[dict]:
     """Lista os jogos que rodam numa plataforma (ex.: Linux, Steam Deck). Falha se a plataforma não existir."""
-    plataforma = _normalizar(plataforma, PLATAFORMAS, "Plataforma")
-    return [_com_id(i) for i, j in JOGOS.items() if plataforma in j["plataformas"]]
+    return filtrar_jogos(plataforma=plataforma)
+
+
+@mcp.tool
+def jogos_em_promocao() -> list[dict]:
+    """Lista os jogos com promoção vigente hoje, do maior para o menor desconto."""
+    return filtrar_jogos(apenas_promocao=True, ordenar_por="desconto")
 
 
 @mcp.tool
@@ -111,27 +126,42 @@ def filtrar_jogos(
     genero: str | None = None,
     plataforma: str | None = None,
     preco_maximo: float | None = None,
+    ano_minimo: int | None = None,
+    desenvolvedora: str | None = None,
+    apenas_promocao: bool = False,
+    ordenar_por: Literal["nota", "preco", "lancamento", "titulo", "desconto"] = "nota",
+    limite: int = 50,
 ) -> list[dict]:
-    """Filtra jogos combinando gênero, plataforma e preço máximo (em reais). Todos os filtros são opcionais."""
+    """Filtra jogos combinando gênero, plataforma, preço máximo (em reais, já com desconto),
+    ano mínimo de lançamento, desenvolvedora (parte do nome) e só promoções. Todos os filtros são opcionais."""
+    consulta = _db().table("jogos_completos").select(CAMPOS_RESUMO)
     if genero:
-        genero = _normalizar(genero, GENEROS, "Gênero")
+        consulta = consulta.filter(*_contem("generos", _normalizar(genero, "generos", "Gênero")))
     if plataforma:
-        plataforma = _normalizar(plataforma, PLATAFORMAS, "Plataforma")
-    return [
-        _com_id(i) for i, j in JOGOS.items()
-        if (not genero or genero in j["generos"])
-        and (not plataforma or plataforma in j["plataformas"])
-        and (preco_maximo is None or j["preco"] <= preco_maximo)
-    ]
+        consulta = consulta.filter(*_contem("plataformas", _normalizar(plataforma, "plataformas", "Plataforma")))
+    if preco_maximo is not None:
+        consulta = consulta.lte("preco_atual", preco_maximo)
+    if ano_minimo is not None:
+        consulta = consulta.gte("data_lancamento", f"{ano_minimo}-01-01")
+    if desenvolvedora:
+        consulta = consulta.ilike("desenvolvedora", f"%{desenvolvedora.strip()}%")
+    if apenas_promocao:
+        consulta = consulta.gt("desconto_pct", 0)
+    coluna, desc = ORDENACAO[ordenar_por]
+    return consulta.order(coluna, desc=desc).limit(max(1, min(limite, 100))).execute().data
 
 
 @mcp.resource("steam://promocoes")
 def promocoes() -> str:
-    """Promoções da semana na Steam fictícia."""
-    return (
-        "Promoções da semana: Lendas do Abismo com 30% de desconto; "
-        "Impérios de Ferro com 50% de desconto; jogos Indie com 20% de desconto até domingo."
-    )
+    """Promoções vigentes na Steam fictícia."""
+    jogos = jogos_em_promocao()
+    if not jogos:
+        return "Nenhuma promoção vigente hoje."
+    linhas = [
+        f"- {j['titulo']}: -{j['desconto_pct']}% (de R$ {j['preco_base']:.2f} por R$ {j['preco_atual']:.2f})"
+        for j in jogos
+    ]
+    return "Promoções vigentes:\n" + "\n".join(linhas)
 
 
 @mcp.prompt
@@ -139,12 +169,10 @@ def recomendar_jogo(genero: str, plataforma: str) -> str:
     """Pede uma recomendação de jogo de um gênero para uma plataforma."""
     return (
         f"Quero uma recomendação de jogo de {genero} que rode em {plataforma}. "
-        "Use as ferramentas da loja para ver as opções, compare preço e nota, "
+        "Use as ferramentas da loja para ver as opções, compare preço atual, menor preço histórico e nota, "
         "e indique o melhor custo-benefício explicando o porquê."
     )
 
 
 if __name__ == "__main__":
-    mcp.run()  # stdio
-    # Alternativa HTTP (como o servidor_reservas.py), em outra porta:
-    # mcp.run(transport="http", host="127.0.0.1", port=8001)
+    mcp.run()  # stdio (para HTTP, use app.py)

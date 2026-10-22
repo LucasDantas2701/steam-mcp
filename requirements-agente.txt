@@ -1,0 +1,9 @@
+# Para rodar o agente LangChain localmente (agente_steam.py). Não é usado pela Vercel.
+-r requirements.txt
+langchain>=1.0
+langchain-mcp-adapters
+langgraph
+# Instale UM provedor de LLM (o que você tiver chave):
+langchain-openai
+# langchain-anthropic
+# langchain-google-genai
