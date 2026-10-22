@@ -1,0 +1,10 @@
+# Mesmas versões do exercício principal. O pin "fastmcp<4" é por causa do langchain-mcp-adapters
+# (ver README da pasta acima, seção Problemas comuns).
+fastmcp>=3,<4
+langchain>=1.0
+langchain-mcp-adapters
+langgraph
+# Instale UM provedor de LLM (o que você tiver chave):
+langchain-openai
+# langchain-anthropic
+# langchain-google-genai
