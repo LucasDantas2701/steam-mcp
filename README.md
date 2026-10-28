@@ -1,4 +1,4 @@
-# Steam Fictícia: servidor MCP (FastMCP) de jogos, gêneros, plataformas e preços(REPO DE APRENDIZADO)
+# Steam Fictícia: servidor MCP (FastMCP) de jogos, gêneros, plataformas e preços (REPO DE APRENDIZADO)
 
 Um servidor MCP que consulta uma loja de jogos fictícia. Os dados (30 jogos, capas, histórico
 de preços e promoções) ficam no **Supabase**. O servidor fica publicado na **Vercel**, para
@@ -61,7 +61,7 @@ $env:PORT="8090"; python app.py   # se a porta 8080 estiver ocupada
 
 ## 3. Publicar na Vercel
 
-1. Crie um repositório no GitHub com o **conteúdo desta pasta** na raiz (o `app.py` precisa ficar na raiz do repositório).
+1. Faça um fork ou clone deste repositório (o `app.py` precisa ficar na raiz).
 2. Na Vercel: **Add New → Project**, importe o repositório e deixe o Framework Preset como está (a Vercel detecta o `app.py` sozinha).
 3. Em **Environment Variables**, adicione **só** `SUPABASE_URL` e `SUPABASE_KEY` (a chave pública). Clique em **Deploy**.
 4. Teste: abra `https://SEU-PROJETO.vercel.app` e rode `python teste_cliente.py https://SEU-PROJETO.vercel.app/mcp`.
@@ -83,4 +83,4 @@ Cada `git push` na branch principal gera um deploy novo.
 - **Lista vazia**: o `seed.py` não rodou, ou rodou num projeto Supabase diferente do `SUPABASE_URL`.
 - **`permission denied` no Supabase**: rode o `schema.sql` de novo (ele recria as permissões de leitura).
 - **Nunca use `print()` no servidor** (em stdio, o stdout é o canal do protocolo).
-- **`fastmcp<4`**: necessário para o `langchain-mcp-adapters` (ver o README da pasta acima).
+- **`fastmcp<4`**: versão exigida pelo `langchain-mcp-adapters`.
