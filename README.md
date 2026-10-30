@@ -1,3 +1,4 @@
+[![M8ven Score](https://m8ven.ai/badge/mcp/lucasdantas2701-steam-mcp-dvc00q?v=ff33a8391f4b7b1a6722d2efe3ea2eae)](https://m8ven.ai/mcp/lucasdantas2701-steam-mcp-dvc00q?s=readme)
 # Steam Fictícia: servidor MCP (FastMCP) de jogos, gêneros, plataformas e preços (REPO DE APRENDIZADO)
 
 Um servidor MCP que consulta uma loja de jogos fictícia. Os dados (30 jogos, capas, histórico
